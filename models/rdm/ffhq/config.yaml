@@ -1,0 +1,127 @@
+model:
+  base_learning_rate: 0.0001
+  target: rdm.models.diffusion.ddpm.MinimalRETRODiffusion
+  params:
+    k_nn: 4
+    query_key: clip_img_emb
+    linear_start: 0.0015
+    linear_end: 0.0195
+    num_timesteps_cond: 1
+    log_every_t: 200
+    timesteps: 1000
+    first_stage_key: image
+    cond_stage_key: nixda
+    image_size: 64
+    channels: 3
+    cond_stage_trainable: false
+    nn_key: nn_embeddings
+    nn_memory: nn_memory/oi_ffhq.p
+    conditioning_key: retro_only
+    monitor: val/loss_simple_ema
+    scale_by_std: false
+    scheduler_config:
+      target: ldm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps:
+        - 10000
+        cycle_lengths:
+        - 10000000000000
+        f_start:
+        - 1.0e-06
+        f_max:
+        - 1.0
+        f_min:
+        - 1.0
+    unet_config:
+      target: rdm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 64
+        in_channels: 3
+        out_channels: 3
+        model_channels: 224
+        attention_resolutions:
+        - 8
+        - 4
+        - 2
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 3
+        - 4
+        num_head_channels: 32
+        use_spatial_transformer: true
+        transformer_depth: 1
+        context_dim: 512
+        use_checkpoint: true
+    first_stage_config:
+      target: ldm.models.autoencoder.VQModelInterface
+      params:
+        embed_dim: 3
+        n_embed: 8192
+        ddconfig:
+          double_z: false
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+    retrieval_cfg:
+      target: rdm.data.retrieval_dataset.dsetbuilder.DatasetBuilder
+      params:
+        patch_size: 256
+        batch_size: 100
+        k: 20
+        max_pool_size: 20000000.0
+        save: true
+        num_workers: 24
+        img_size:
+        - 1200
+        - 1200
+        chunk_size: 2000000.0
+        gpu: true
+        saved_embeddings: database/openimages
+        load_patch_dataset: True
+        host: iwr
+        retriever_config:
+          target: rdm.modules.retrievers.ClipImageRetriever
+          params:
+            model: ViT-B/32
+        data:
+          target: rdm.data.openimages.FullOpenImagesTrain
+          params: {}
+    retrieval_encoder_cfg:
+      target: torch.nn.Identity
+    cond_stage_config: __is_unconditional__
+data:
+  target: main.DataModuleFromConfig
+  params:
+    num_workers: 5
+    batch_size: 50
+    train:
+      target: rdm.data.base.QueryDataset
+      params:
+        k: 4
+        nns: <compute nearest neighbor, see README>
+        dset_config:
+          target: rdm.data.faces.FFHQTrainRDM
+          params:
+            size: 256
+    validation:
+      target: rdm.data.base.QueryDataset
+      params:
+        k: 4
+        nns: <compute nearest neighbor, see README>
+        dset_config:
+          target: rdm.data.faces.FFHQValidationRDM
+          params:
+            size: 256

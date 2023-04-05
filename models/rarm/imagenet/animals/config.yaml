@@ -1,0 +1,113 @@
+model:
+  base_learning_rate: 5.0e-06
+  target: rdm.models.autoregression.transformer.LatentImageRETRO
+  params:
+    mask_token: 16384
+    sos_token: 16385
+    p_mask_max: 0.0
+    nn_key: nn_embeddings
+    nn_memory: nn_memory/oi_imagenet-animals.p
+    nn_reshaper_cfg:
+      target: rdm.modules.encoders.nn_encoders.CLIPEmbeddingReshaper
+    nn_encoder_cfg:
+      target: rdm.modules.encoders.nn_encoders.IdentityEncoder
+    transformer_config:
+      target: rdm.modules.attention.RetrievalPatchTransformer
+      params:
+        in_channels: 16386
+        n_heads: 12
+        d_head: 64
+        depth: 18
+        context_dim: 512
+        positional_encodings: true
+        sequence_length: 256
+        out_channels: 16384
+        cross_attend: true
+        causal: true
+        continuous: false
+    first_stage_config:
+      target: taming.models.vqgan.VQModel
+      params:
+        embed_dim: 256
+        n_embed: 16384
+        monitor: val/rec_loss
+        ddconfig:
+          double_z: false
+          z_channels: 256
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 1
+          - 2
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions:
+          - 16
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+    retrieval_cfg:
+      target: rdm.data.retrieval_dataset.dsetbuilder.DatasetBuilder
+      params:
+        patch_size: 256
+        batch_size: 100
+        k: 20
+        max_pool_size: 20000000.0
+        save: true
+        num_workers: 24
+        img_size:
+        - 1200
+        - 1200
+        chunk_size: 2000000.0
+        gpu: true
+        saved_embeddings: database/openimages
+        load_patch_dataset: true
+        retriever_config:
+          target: rdm.modules.retrievers.ClipImageRetriever
+          params:
+            model: ViT-B/32
+        data:
+          target: rdm.data.openimages.FullOpenImagesTrain
+          params: {}
+    cond_stage_config: __is_unconditional__
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 50
+    wrap: false
+    num_workers: 5
+    sampler_config:
+      target: rdm.data.base.SubsetSampler
+      params:
+        label_key: class_label
+        label_range:
+        - 0
+        - 397
+    train:
+      target: rdm.data.base.QueryDataset
+      params:
+        k: 4
+        nns: <compute nearest neighbor, see README>
+        load_patches: true
+        n_patches_per_side: 1
+        dset_config:
+          target: rdm.data.imagenet.ImageNetTrain
+          params:
+            config:
+              size: 256
+    validation:
+      target: rdm.data.base.QueryDataset
+      params:
+        k: 4
+        nns: <compute nearest neighbor, see README>
+        load_patches: true
+        n_patches_per_side: 1
+        dset_config:
+          target: rdm.data.imagenet.ImageNetValidation
+          params:
+            config:
+              size: 256

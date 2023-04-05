@@ -1,0 +1,25 @@
+data:
+  target: main.DataModuleFromConfig
+  params:
+    num_workers: 0
+    batch_size: 5
+    train:
+      target: rdm.data.base.QueryDataset
+      params:
+        k: 20
+        # nns: <Fill this with the new path>
+        dset_config:
+          target: rdm.data.imagenet.ImageNetTrain
+          params:
+            config:
+              size: 256
+    validation:
+      target: rdm.data.base.QueryDataset
+      params:
+        k: 20
+        # nns: <Fill this with the new path>
+        dset_config:
+          target: rdm.data.imagenet.ImageNetValidation
+          params:
+            config:
+              size: 256

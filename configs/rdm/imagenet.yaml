@@ -1,0 +1,165 @@
+model:
+  base_learning_rate: 0.0001 # TODO: run with --scale_lr false
+  target: rdm.models.diffusion.ddpm.MinimalRETRODiffusion
+  params:
+    k_nn: 4
+    query_key: clip_img_emb
+    linear_start: 0.0015
+    linear_end: 0.0195
+    num_timesteps_cond: 1
+    log_every_t: 200
+    timesteps: 1000
+    first_stage_key: image
+    cond_stage_key: nixda
+    image_size: 64
+    channels: 3
+    cond_stage_trainable: false
+    nn_key: nn_embeddings
+    conditioning_key: retro_only
+    monitor: val/loss_simple_ema
+    scale_by_std: false
+    nn_memory: nn_memory/oi_imagenet.p
+    ignore_keys: ['unconditional_guidance_vex']
+    scheduler_config:
+      target: ldm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps:
+        - 100
+        cycle_lengths:
+        - 10000000000000
+        f_start:
+        - 1.0e-06
+        f_max:
+        - 1.0
+        f_min:
+        - 1.0
+    unet_config:
+      target: rdm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 64
+        in_channels: 3
+        out_channels: 3
+        model_channels: 192
+        attention_resolutions:
+        - 8
+        - 4
+        - 2
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 3
+        - 5
+        use_scale_shift_norm: false
+        resblock_updown: false
+        num_head_channels: 32
+        use_spatial_transformer: true
+        transformer_depth: 1
+        context_dim: 512
+        use_checkpoint: true
+    first_stage_config:
+      target: ldm.models.autoencoder.VQModelInterface
+      params:
+        ckpt_path: models/first_stage_models/vq-f4/model.ckpt
+        embed_dim: 3
+        n_embed: 8192
+        ddconfig:
+          double_z: false
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+    retrieval_cfg:
+      target: rdm.data.retrieval_dataset.dsetbuilder.DatasetBuilder
+      params:
+        patch_size: 256
+        batch_size: 100
+        k: 20
+        max_pool_size: 20000000.0
+        save: true
+        num_workers: 24
+        img_size:
+        - 1200
+        - 1200
+        chunk_size: 2000000.0
+        gpu: true
+        saved_embeddings: database/openimages
+        load_patch_dataset: True
+        retriever_config:
+          target: rdm.modules.retrievers.ClipImageRetriever
+          params:
+            model: ViT-B/32
+        data:
+          target: rdm.data.openimages.FullOpenImagesTrain
+          params: {}
+    retrieval_encoder_cfg:
+      target: torch.nn.Identity
+    cond_stage_config: __is_unconditional__
+data:
+ target: main.DataModuleFromConfig
+ params:
+   batch_size: 50
+   wrap: False
+   num_workers: 8
+
+   train:
+     target: rdm.data.base.QueryDataset
+     params:
+       k: 4
+       nns: <compute nearest neighbor, see README>
+       n_patches_per_side: 1
+       load_patches: False
+       dset_config:
+         target: rdm.data.imagenet.ImageNetTrain
+         params:
+           config:
+             size: 256
+   validation:
+     target: rdm.data.base.QueryDataset
+     params:
+       k: 4
+       nns: <compute nearest neighbor, see README>
+       n_patches_per_side: 1
+       load_patches: True
+       dset_config:
+         target: rdm.data.imagenet.ImageNetValidation
+         params:
+           config:
+             size: 256
+lightning:
+  callbacks:
+    image_logger:
+      target: main.ImageLogger
+      params:
+        disabled: False
+        batch_frequency: 5000
+        max_images: 8
+        increase_log_steps: False
+        log_on_batch_idx: True
+        log_first_step: True
+        log_images_kwargs:
+          plot_progressive_rows: False
+          plot_diffusion_rows: False
+          inpaint: False
+          quantize_denoised: True
+          sample_nns: True
+          memsize: [1,0.0001,0.001,0.01,0.1,1.]
+
+
+    metrics_over_trainsteps_checkpoint:
+      params:
+        every_n_train_steps: 20000
+
+  trainer:
+    benchmark: True
+    num_sanity_val_steps: 2
