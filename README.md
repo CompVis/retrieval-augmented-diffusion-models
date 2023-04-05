@@ -152,7 +152,7 @@ For pretrained autoencoders see the [latent diffusion repository](https://github
 | --------------------------------- | ------         | ---------------  | ----------------- | ------ | ----- | ---            |
 | ImageNet                          | ImageNet       | 5.32             | 0.74              | 0.51   | https://ommer-lab.com/files/rdm/models/rdm/imagenet_in-db/model.ckpt  | 6.2            |
 | ImageNet                          | OpenImages     | 12.28            | 0.69              | 0.55   | https://ommer-lab.com/files/rdm/models/rdm/imagenet/model.ckpt  | 6.2            |
-| FFHQ                              | OpenImages     | 1.92             | 0.93              | 0.35   | https://ommer-lab.com/files/rdm/models/rdm/ffhq/model.ckpt  | 6.2            |
+| FFHQ                              | OpenImages     | 1.92\*           | 0.93\*            | 0.35\* | https://ommer-lab.com/files/rdm/models/rdm/ffhq/model.ckpt  | 6.2            |
 
 \*: Evaluated using CLIP as feature extractor instead of Inception
 
@@ -162,8 +162,6 @@ For pretrained autoencoders see the [latent diffusion repository](https://github
 | ImageNet-Dogs      | OpenImages     | 45.27            | 0.64              | 0.55   | https://ommer-lab.com/files/rdm/models/rarm/imagenet/dogs/model.ckpt    | 2.9            |
 | ImageNet-Mammals   | OpenImages     | 49.92            | 0.56              | 0.58   | https://ommer-lab.com/files/rdm/models/rarm/imagenet/mammals/model.ckpt | 2.9            |
 | ImageNet-Animals   | OpenImages     | 49.03            | 0.55              | 0.58   | https://ommer-lab.com/files/rdm/models/rarm/imagenet/animals/model.ckpt | 2.9            |
-
-\*: Evaluated using CLIP as feature extractor instead of Inception
 
 
 ### Get the models
